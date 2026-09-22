@@ -4,7 +4,8 @@ import { decodeFunctionResult, encodeFunctionData, erc20Abi, getAddress, hexToSt
 
 import { poolixConfig } from "@/config/poolix";
 import { uniswapV2FactoryAbi, uniswapV2PairAbi } from "@/services/abis/uniswap-v2";
-import { batchedCall, pacedCalls } from "@/services/chain/rpc";
+import { aggregate3Bytes, multicallAvailable, MULTICALL_BATCH_SIZE } from "@/services/chain/multicall";
+import { batchedCall, pacedCalls, type RpcCall } from "@/services/chain/rpc";
 import type { Address, Hex } from "@/types/web3";
 
 /*
@@ -100,6 +101,37 @@ const scanWindow = (): number => {
   return Math.min(configured, MAX_WINDOW);
 };
 
+const AGGREGATE3_PAUSE_MS = 120;
+const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Reads pair state through Multicall3's aggregate3, falling back to individual batched
+ * calls when aggregate3 is unavailable.
+ *
+ * aggregate3 carries up to 250 calls in one eth_call request. For 2,000 pairs that is
+ * 6,000 state calls in 24 HTTP requests instead of 150, reducing the pacing floor from
+ * ~18 s to ~3 s and letting the scan complete within SCAN_BUDGET_MS.
+ */
+async function readPairState(
+  calls: readonly RpcCall[],
+  deadline: number,
+): Promise<readonly (Hex | null)[]> {
+  if (!(await multicallAvailable())) return pacedCalls(calls, { deadline });
+
+  const results: (Hex | null)[] = [];
+  for (let index = 0; index < calls.length; index += MULTICALL_BATCH_SIZE) {
+    if (Date.now() > deadline) {
+      results.push(...Array<Hex | null>(calls.length - results.length).fill(null));
+      return results;
+    }
+    if (index > 0) await sleep(AGGREGATE3_PAUSE_MS);
+    const slice = calls.slice(index, index + MULTICALL_BATCH_SIZE);
+    const batch = await aggregate3Bytes(slice);
+    results.push(...(batch ?? Array<Hex | null>(slice.length).fill(null)));
+  }
+  return results;
+}
+
 /**
  * Scans the newest pairs and returns those that hold WETH, ranked by how much WETH
  * they hold. Returns an empty, incomplete result rather than throwing when the chain
@@ -144,13 +176,13 @@ async function scanPools(): Promise<PoolDiscoveryResult> {
   const token1Data = encodeFunctionData({ abi: uniswapV2PairAbi, functionName: "token1" });
   const reservesData = encodeFunctionData({ abi: uniswapV2PairAbi, functionName: "getReserves" });
 
-  const stateResults = await pacedCalls(
+  const stateResults = await readPairState(
     pairs.flatMap((pair) => [
       { to: pair, data: token0Data },
       { to: pair, data: token1Data },
       { to: pair, data: reservesData },
     ]),
-    { deadline },
+    deadline,
   );
 
   const candidates: { address: Address; other: Address; wethReserve: bigint; otherReserve: bigint }[] = [];

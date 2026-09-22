@@ -94,3 +94,49 @@ export function decodeAggregate3(result: string, expected: number): (Hex | null)
 
   return out;
 }
+
+/**
+ * Like `decodeAggregate3`, but accepts return data of any byte length rather than
+ * requiring exactly one 32-byte word.
+ *
+ * Used by callers that batch calls with different return signatures in one aggregate3
+ * request — for example, `token0()` returns one address word while `getReserves()`
+ * returns three words. The caller decodes each entry according to its position.
+ *
+ * The safety contract is the same: a failed entry, an empty return, or a response
+ * whose array length disagrees with the request all decode to null.
+ */
+export function decodeAggregate3Bytes(result: string, expected: number): (Hex | null)[] {
+  const body = result.replace(/^0x/, "");
+  const out: (Hex | null)[] = Array<Hex | null>(expected).fill(null);
+  if (body.length < 128 || !/^[0-9a-fA-F]*$/.test(body)) return out;
+
+  const at = (byteOffset: number) => body.slice(byteOffset * 2, byteOffset * 2 + 64);
+  const num = (hex: string) => (hex.length === 64 ? Number(BigInt(`0x${hex}`)) : Number.NaN);
+
+  const arrayOffset = num(at(0));
+  if (!Number.isSafeInteger(arrayOffset)) return out;
+  const length = num(at(arrayOffset));
+  if (!Number.isSafeInteger(length) || length !== expected) return out;
+
+  const dataStart = arrayOffset + 32;
+  for (let index = 0; index < length; index++) {
+    const elementOffset = num(at(dataStart + index * 32));
+    if (!Number.isSafeInteger(elementOffset)) continue;
+    const element = dataStart + elementOffset;
+
+    if (num(at(element)) !== 1) continue;
+
+    const bytesOffset = num(at(element + 32));
+    if (!Number.isSafeInteger(bytesOffset)) continue;
+    const bytesAt = element + bytesOffset;
+    const byteLength = num(at(bytesAt));
+    if (!Number.isSafeInteger(byteLength) || byteLength === 0) continue;
+
+    const dataHex = body.slice((bytesAt + 32) * 2, (bytesAt + 32) * 2 + byteLength * 2);
+    if (dataHex.length !== byteLength * 2) continue;
+    out[index] = `0x${dataHex}` as Hex;
+  }
+
+  return out;
+}

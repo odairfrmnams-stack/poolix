@@ -2,6 +2,7 @@ import "server-only";
 
 import {
   decodeAggregate3,
+  decodeAggregate3Bytes,
   encodeAggregate3,
   type Call,
 } from "@/services/chain/multicall-codec";
@@ -110,4 +111,16 @@ export async function aggregate3(calls: readonly Call[]): Promise<(Hex | null)[]
   const result = await post(MULTICALL3_ADDRESS, encodeAggregate3(calls));
   if (result === null) return null;
   return decodeAggregate3(result, calls.length);
+}
+
+/**
+ * Like `aggregate3`, but decodes return data of any byte length rather than requiring
+ * exactly one 32-byte word per entry. Used when one batch carries calls with different
+ * return signatures — token0() returns one word, getReserves() returns three.
+ */
+export async function aggregate3Bytes(calls: readonly Call[]): Promise<(Hex | null)[] | null> {
+  if (calls.length === 0) return [];
+  const result = await post(MULTICALL3_ADDRESS, encodeAggregate3(calls));
+  if (result === null) return null;
+  return decodeAggregate3Bytes(result, calls.length);
 }

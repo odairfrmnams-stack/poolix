@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { decodeAggregate3 } from "@/services/chain/multicall-codec";
+import { decodeAggregate3, decodeAggregate3Bytes } from "@/services/chain/multicall-codec";
 
 /*
   The decoder is the one place a batched read could quietly invent a balance.
@@ -111,6 +111,103 @@ describe("aggregate3 decoding", () => {
     ];
     for (const response of failures) {
       const decoded = decodeAggregate3(response, 1);
+      assert.equal(decoded[0], null, `expected null, got ${String(decoded[0])}`);
+    }
+  });
+});
+
+// --------------------------------------------------- variable-length decoder
+
+describe("aggregate3Bytes decoding", () => {
+  it("decodes a single 32-byte word, same as the strict decoder", () => {
+    const response = encodeResponse([{ success: true, data: balance(42n) }]);
+    const decoded = decodeAggregate3Bytes(response, 1);
+    assert.equal(decoded.length, 1);
+    assert.equal(BigInt(decoded[0]!), 42n);
+  });
+
+  it("decodes a 96-byte getReserves response (3 words)", () => {
+    const reserve0 = word(1000n);
+    const reserve1 = word(2000n);
+    const blockTs = word(1700000000n);
+    const data = `0x${reserve0}${reserve1}${blockTs}`;
+    const response = encodeResponse([{ success: true, data }]);
+    const decoded = decodeAggregate3Bytes(response, 1);
+    assert.notEqual(decoded[0], null);
+    const body = decoded[0]!.slice(2);
+    assert.equal(BigInt(`0x${body.slice(0, 64)}`), 1000n);
+    assert.equal(BigInt(`0x${body.slice(64, 128)}`), 2000n);
+  });
+
+  it("handles mixed return lengths: address (32B) + address (32B) + reserves (96B)", () => {
+    const addr = `0x${word("0x1234567890abcdef1234567890abcdef12345678")}`;
+    const reserves = `0x${word(500n)}${word(600n)}${word(99n)}`;
+    const response = encodeResponse([
+      { success: true, data: addr },
+      { success: true, data: addr },
+      { success: true, data: reserves },
+    ]);
+    const decoded = decodeAggregate3Bytes(response, 3);
+    assert.notEqual(decoded[0], null);
+    assert.equal(decoded[0]!.length, 66);
+    assert.notEqual(decoded[1], null);
+    assert.notEqual(decoded[2], null);
+    assert.equal(decoded[2]!.length, 2 + 64 * 3);
+  });
+
+  it("returns null for a failed subcall, not zero", () => {
+    const response = encodeResponse([{ success: false, data: null }]);
+    assert.equal(decodeAggregate3Bytes(response, 1)[0], null);
+  });
+
+  it("returns null for empty return data on success", () => {
+    const response = encodeResponse([{ success: true, data: null }]);
+    assert.equal(decodeAggregate3Bytes(response, 1)[0], null);
+  });
+
+  it("keeps successes and failures in position with mixed lengths", () => {
+    const addr = `0x${word("0xaaaa567890abcdef1234567890abcdef12345678")}`;
+    const reserves = `0x${word(100n)}${word(200n)}${word(1n)}`;
+    const response = encodeResponse([
+      { success: true, data: addr },
+      { success: false, data: null },
+      { success: true, data: reserves },
+    ]);
+    const decoded = decodeAggregate3Bytes(response, 3);
+    assert.notEqual(decoded[0], null);
+    assert.equal(decoded[1], null);
+    assert.notEqual(decoded[2], null);
+  });
+
+  it("returns all nulls when array length disagrees with expected", () => {
+    const response = encodeResponse([{ success: true, data: balance(7n) }]);
+    assert.deepEqual(decodeAggregate3Bytes(response, 2), [null, null]);
+  });
+
+  it("returns all nulls for truncated response", () => {
+    assert.deepEqual(decodeAggregate3Bytes("0x", 1), [null]);
+  });
+
+  it("returns all nulls for garbage", () => {
+    assert.deepEqual(decodeAggregate3Bytes("0xnonsense", 1), [null]);
+  });
+
+  it("the strict decoder rejects 96-byte data, the bytes decoder accepts it", () => {
+    const data = `0x${word(1n)}${word(2n)}${word(3n)}`;
+    const response = encodeResponse([{ success: true, data }]);
+    assert.equal(decodeAggregate3(response, 1)[0], null);
+    assert.notEqual(decodeAggregate3Bytes(response, 1)[0], null);
+  });
+
+  it("never produces a value from any failure mode", () => {
+    const failures = [
+      encodeResponse([{ success: false, data: null }]),
+      encodeResponse([{ success: true, data: null }]),
+      "0x",
+      "0xzz",
+    ];
+    for (const response of failures) {
+      const decoded = decodeAggregate3Bytes(response, 1);
       assert.equal(decoded[0], null, `expected null, got ${String(decoded[0])}`);
     }
   });
