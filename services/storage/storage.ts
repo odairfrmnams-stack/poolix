@@ -243,9 +243,28 @@ export function analyticsStore<T extends object>(
 
 let defaultStorage: Storage | null = null;
 
+/**
+ * Directory the filesystem backend writes into.
+ *
+ * On Vercel the deploy image at `process.cwd()` is read-only, so `writeFile` there fails
+ * with EROFS and every tick's state is silently dropped — every reader then sees a cold
+ * start and every figure reads "--". `/tmp` is the one path a serverless function may
+ * write to, so on Vercel we go there.
+ *
+ * `/tmp` is per-instance and cleared between cold starts, so this is NOT durable
+ * persistent storage: it lets ticks converge within an instance's lifetime and lets the
+ * dashboard read the state THIS instance just wrote. A follow-up would move to a real KV
+ * for cross-instance persistence. Local development and tests keep the repo-relative
+ * `.poolix-cache` so behaviour and file layout there do not change.
+ */
+function storageRoot(): string {
+  if (process.env.VERCEL === "1") return "/tmp/.poolix-cache";
+  return join(process.cwd(), ".poolix-cache");
+}
+
 /** The process-wide storage backend. Filesystem today; the interface allows others. */
 export function storage(): Storage {
-  defaultStorage ??= new FilesystemStorage(join(process.cwd(), ".poolix-cache"));
+  defaultStorage ??= new FilesystemStorage(storageRoot());
   return defaultStorage;
 }
 
