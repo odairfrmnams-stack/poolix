@@ -4,17 +4,15 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import { copy } from "@/lib/copy";
+import { resolveSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 import { Providers } from "./providers";
 
 const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"], display: "swap" });
 const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"], display: "swap" });
 
-// Absolute URLs for OpenGraph images. Set NEXT_PUBLIC_SITE_URL when deploying.
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL(resolveSiteUrl()),
   title: {
     default: copy.meta.title,
     template: "%s — Poolix",
