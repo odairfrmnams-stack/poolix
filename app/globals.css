@@ -1,0 +1,500 @@
+@import "tailwindcss";
+
+/*
+  Poolix visual system — Aqua Mint × Black.
+
+  Mint is the field, black is the contrast. Roughly 70/30. Every card and panel is a
+  black surface on the mint canvas, so text-on-canvas is black and text-on-surface is
+  light. To make that work without touching a single component, dark surfaces
+  redefine the child text variables (see below): a `text-fg` inside `.bg-surface`
+  reads the light token via the cascade.
+
+  Nothing about the trading, analytics or Pons pipelines was touched — this file
+  redefines colours only.
+*/
+
+:root {
+  color-scheme: light;
+
+  /* Palette anchors (never overridden — always the same colour when named). */
+  --poolix-aqua: #8fffe0;
+  --poolix-aqua-bright: #b8ffe9;
+  --poolix-deep-mint: #4de8c1;
+  --poolix-dark-mint: #12382f;
+  --poolix-black: #050706;
+  --poolix-soft-black: #0a0f0d;
+  --poolix-text-dark: #10221c;
+  --poolix-light-text: #e8fff8;
+  --poolix-muted-mint: #4e766a;
+
+  /* Canvas and surfaces. Canvas is Aqua Mint; surfaces are black. */
+  --poolix-bg: var(--poolix-aqua);
+  --poolix-bg-alt: var(--poolix-aqua-bright);
+  --poolix-surface: var(--poolix-black);
+  --poolix-surface-raised: var(--poolix-soft-black);
+  --poolix-surface-hover: var(--poolix-dark-mint);
+
+  /* Borders on canvas. Softened black keeps the mint field calm. */
+  --poolix-border: rgba(5, 7, 6, 0.09);
+  --poolix-border-strong: rgba(5, 7, 6, 0.22);
+
+  /* Type on canvas. */
+  --poolix-fg: var(--poolix-black);
+  --poolix-fg-muted: var(--poolix-text-dark);
+  --poolix-fg-subtle: var(--poolix-muted-mint);
+
+  /*
+    Accent. Deep Mint reads as the brand mark on the mint canvas; Aqua Mint reads
+    the same way on the black surfaces. Both point to "positive / actionable".
+  */
+  --poolix-accent: var(--poolix-black);
+  --poolix-accent-hover: var(--poolix-dark-mint);
+  --poolix-accent-press: var(--poolix-black);
+  --poolix-accent-text: var(--poolix-dark-mint);
+  --poolix-accent-muted: var(--poolix-muted-mint);
+  --poolix-accent-wash: rgba(18, 56, 47, 0.10);
+  --poolix-accent-ring: rgba(18, 56, 47, 0.25);
+
+  /* Data signals — recoloured for legibility on the mint canvas. */
+  --poolix-positive: var(--poolix-dark-mint);
+  --poolix-negative: #a12b1f;
+  --poolix-warning: #92610b;
+
+  /* Radius scale — softer overall for a liquid feel. */
+  --poolix-radius-sm: 0.625rem;
+  --poolix-radius: 1rem;
+  --poolix-radius-lg: 1.4rem;
+  --poolix-radius-xl: 1.75rem;
+  --poolix-radius-full: 999px;
+}
+
+@theme inline {
+  --color-canvas: var(--poolix-bg);
+  --color-canvas-alt: var(--poolix-bg-alt);
+  --color-surface: var(--poolix-surface);
+  --color-raised: var(--poolix-surface-raised);
+  --color-hover: var(--poolix-surface-hover);
+
+  --color-line: var(--poolix-border);
+  --color-line-strong: var(--poolix-border-strong);
+
+  --color-fg: var(--poolix-fg);
+  --color-muted: var(--poolix-fg-muted);
+  --color-subtle: var(--poolix-fg-subtle);
+
+  --color-accent: var(--poolix-accent);
+  --color-accent-hover: var(--poolix-accent-hover);
+  --color-accent-press: var(--poolix-accent-press);
+  --color-accent-text: var(--poolix-accent-text);
+  --color-accent-muted: var(--poolix-accent-muted);
+  --color-accent-wash: var(--poolix-accent-wash);
+
+  --color-positive: var(--poolix-positive);
+  --color-negative: var(--poolix-negative);
+  --color-warning: var(--poolix-warning);
+
+  /*
+    Fixed colour tokens that never re-scope. Used where the caller means the actual
+    brand black or the actual aqua mint, regardless of whether they sit on canvas
+    or inside a dark card — primary buttons, active pills, and so on.
+  */
+  --color-ink: var(--poolix-black);
+  --color-paper: var(--poolix-aqua);
+  --color-mint: var(--poolix-deep-mint);
+  --color-mint-bright: var(--poolix-aqua-bright);
+  --color-light: var(--poolix-light-text);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+
+  --radius-poolix-sm: var(--poolix-radius-sm);
+  --radius-poolix: var(--poolix-radius);
+  --radius-poolix-lg: var(--poolix-radius-lg);
+  --radius-poolix-xl: var(--poolix-radius-xl);
+}
+
+/*
+  Scoped variable overrides — the whole reason this migration touches only tokens.
+
+  A `.bg-surface` is a black card on the mint canvas. Everything inside it needs to
+  be legible against black: text goes light, "line" goes translucent-white, and
+  accents flip to Aqua Mint. Descendants using `text-fg`, `text-muted`, `border-line`
+  or `text-accent-text` read these variables via the cascade — no component edits.
+
+  `--poolix-bg` is also redefined here, so SVG "knockouts" that used
+  `fill="var(--poolix-bg)"` to punch a circle onto the canvas now punch it onto
+  the black surface instead, exactly as intended.
+*/
+.bg-surface,
+.bg-raised,
+.bg-hover {
+  --color-fg: var(--poolix-light-text);
+  --color-muted: rgba(232, 255, 248, 0.72);
+  --color-subtle: rgba(232, 255, 248, 0.5);
+  --color-line: rgba(232, 255, 248, 0.10);
+  --color-line-strong: rgba(232, 255, 248, 0.22);
+
+  --color-accent: var(--poolix-aqua);
+  --color-accent-hover: var(--poolix-aqua-bright);
+  --color-accent-press: var(--poolix-deep-mint);
+  --color-accent-text: var(--poolix-aqua);
+  --color-accent-wash: rgba(143, 255, 224, 0.14);
+  --color-accent-muted: rgba(232, 255, 248, 0.5);
+
+  --color-positive: var(--poolix-aqua);
+  --color-negative: #ff9c92;
+  --color-warning: #ffd66b;
+
+  --poolix-bg: var(--poolix-black);
+  --poolix-fg: var(--poolix-light-text);
+  --poolix-fg-muted: rgba(232, 255, 248, 0.72);
+  --poolix-fg-subtle: rgba(232, 255, 248, 0.5);
+  --poolix-border: rgba(232, 255, 248, 0.10);
+  --poolix-border-strong: rgba(232, 255, 248, 0.22);
+  --poolix-accent: var(--poolix-aqua);
+  --poolix-accent-hover: var(--poolix-aqua-bright);
+  --poolix-accent-text: var(--poolix-aqua);
+  --poolix-accent-wash: rgba(143, 255, 224, 0.14);
+
+  color: var(--poolix-light-text);
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    background-color: var(--poolix-bg);
+    color: var(--poolix-fg);
+    font-family: var(--font-sans);
+    font-variant-numeric: tabular-nums;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: rgba(5, 7, 6, 0.85);
+    color: var(--poolix-aqua);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--poolix-black);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  .bg-surface :focus-visible,
+  .bg-raised :focus-visible,
+  .bg-hover :focus-visible {
+    outline-color: var(--poolix-aqua);
+  }
+
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  * {
+    scrollbar-color: var(--poolix-border-strong) transparent;
+    scrollbar-width: thin;
+  }
+}
+
+@layer utilities {
+  /* Faint grid — subtle enough to sit under a hero without competing. */
+  .poolix-grid {
+    background-image:
+      linear-gradient(to right, rgba(5, 7, 6, 0.06) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(5, 7, 6, 0.06) 1px, transparent 1px);
+    background-size: 64px 64px;
+  }
+
+  .poolix-numeric {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+  }
+
+  /*
+    The landing-hero liquid field. Pure CSS — no images, no canvas, no WebGL.
+    Three overlapping radial gradients slowly drift; the whole layer sits behind
+    the hero copy and reads as depth rather than motion. Cycles are long enough
+    (18–34 s) to fall well below "animation" and well above "unmoving".
+  */
+  .poolix-liquid-field {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .poolix-liquid-orb {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(60px);
+    opacity: 0.75;
+    will-change: transform;
+    animation: poolix-liquid-drift 26s ease-in-out infinite;
+  }
+  .poolix-liquid-orb--a {
+    top: -10%;
+    left: -8%;
+    width: 46%;
+    height: 62%;
+    background: radial-gradient(circle at 30% 40%, var(--poolix-aqua-bright), transparent 65%);
+  }
+  .poolix-liquid-orb--b {
+    top: 10%;
+    right: -12%;
+    width: 52%;
+    height: 70%;
+    background: radial-gradient(circle at 60% 50%, var(--poolix-deep-mint), transparent 60%);
+    animation-duration: 34s;
+    animation-delay: -8s;
+    opacity: 0.35;
+  }
+  .poolix-liquid-orb--c {
+    bottom: -20%;
+    left: 25%;
+    width: 55%;
+    height: 60%;
+    background: radial-gradient(circle at 50% 50%, var(--poolix-aqua-bright), transparent 65%);
+    animation-duration: 30s;
+    animation-delay: -14s;
+    opacity: 0.5;
+  }
+
+  /* Wave rings — SVG-friendly stroke pulse for the hero. */
+  .poolix-wave-ring {
+    animation: poolix-wave-breathe 18s ease-in-out infinite;
+  }
+  .poolix-wave-ring--b {
+    animation-delay: -6s;
+    animation-duration: 24s;
+  }
+  .poolix-wave-ring--c {
+    animation-delay: -12s;
+    animation-duration: 30s;
+  }
+
+  /* Swap-page flow field — kept, retimed for the new palette. */
+  .poolix-flow-line {
+    stroke-dasharray: 6 200;
+    animation: poolix-flow-drift 38s linear infinite;
+  }
+  .poolix-flow-line--slow {
+    animation-duration: 54s;
+    animation-direction: reverse;
+  }
+  .poolix-ring {
+    animation: poolix-ring-breathe 16s ease-in-out infinite;
+  }
+  .poolix-ring--offset {
+    animation-delay: -6s;
+    animation-duration: 21s;
+  }
+  .poolix-node-halo {
+    animation: poolix-node-pulse 9s ease-in-out infinite;
+  }
+  .poolix-node-halo--offset {
+    animation-delay: -4s;
+  }
+
+  .poolix-range {
+    appearance: none;
+    width: 100%;
+    height: 2px;
+    background: var(--poolix-border-strong);
+    border-radius: 999px;
+    outline-offset: 6px;
+  }
+  .poolix-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 999px;
+    background: var(--poolix-aqua);
+    border: 3px solid var(--poolix-black);
+    box-shadow: 0 0 0 1px var(--poolix-aqua);
+    cursor: grab;
+  }
+  .poolix-range::-webkit-slider-thumb:active {
+    cursor: grabbing;
+  }
+  .poolix-range::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    background: var(--poolix-aqua);
+    border: 2px solid var(--poolix-black);
+    cursor: grab;
+  }
+}
+
+@keyframes poolix-liquid-drift {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(2%, -3%, 0) scale(1.06);
+  }
+}
+
+@keyframes poolix-wave-breathe {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes poolix-flow-drift {
+  from {
+    stroke-dashoffset: 0;
+  }
+  to {
+    stroke-dashoffset: -206;
+  }
+}
+
+@keyframes poolix-ring-breathe {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes poolix-node-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+/*
+  Hero entrance. CSS-only so page.tsx stays a server component and no JS runs on the
+  critical path — the animation begins as soon as the browser paints. Fill mode is
+  `both`, so each element is invisible during its delay window and locks into its
+  final rendered state afterwards; nothing here can leave a hero element hidden.
+  Layout is untouched: only `opacity`, `transform` and `filter` animate.
+*/
+.poolix-hero-eyebrow,
+.poolix-hero-heading,
+.poolix-hero-subtitle,
+.poolix-hero-ctas {
+  animation-fill-mode: both;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-iteration-count: 1;
+  will-change: opacity, transform, filter;
+}
+.poolix-hero-eyebrow {
+  animation-name: poolix-hero-rise-eyebrow;
+  animation-duration: 500ms;
+  animation-delay: 0ms;
+}
+.poolix-hero-heading {
+  animation-name: poolix-hero-rise-heading;
+  animation-duration: 650ms;
+  animation-delay: 100ms;
+}
+.poolix-hero-subtitle {
+  animation-name: poolix-hero-rise-subtitle;
+  animation-duration: 500ms;
+  animation-delay: 250ms;
+}
+.poolix-hero-ctas {
+  animation-name: poolix-hero-rise-ctas;
+  animation-duration: 500ms;
+  animation-delay: 350ms;
+}
+
+@keyframes poolix-hero-rise-eyebrow {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+}
+@keyframes poolix-hero-rise-heading {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 16px, 0);
+    filter: blur(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+    filter: blur(0);
+  }
+}
+@keyframes poolix-hero-rise-subtitle {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+@keyframes poolix-hero-rise-ctas {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poolix-flow-line,
+  .poolix-ring,
+  .poolix-node-halo,
+  .poolix-liquid-orb,
+  .poolix-wave-ring {
+    animation: none !important;
+    stroke-dasharray: none;
+    opacity: 0.8;
+  }
+  /*
+    Users who asked for less motion get immediate visibility only — no rise, no blur,
+    no fade. The `!important` override wins against the delayed keyframes above.
+  */
+  .poolix-hero-eyebrow,
+  .poolix-hero-heading,
+  .poolix-hero-subtitle,
+  .poolix-hero-ctas {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
